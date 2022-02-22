@@ -7,10 +7,17 @@ import numpy as np
 import dash
 from dash import dcc
 from dash import html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 from flask import Flask
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+from PIL import Image, ImageOps
+import numpy as np
+import plotly.express as px
+
+from search import search
 
 # import dash_cytoscape as cyto
 
@@ -25,152 +32,74 @@ if __name__ == "__main__":
     # add text input
     text_input = dcc.Input(id="input-box", type="text", placeholder="Enter a query")
 
-    app.layout = html.Div(children=[title_div, text_input])
+    # add label
+    label1 = html.Label("Enter a query", id="label1")
 
-    # @app.callback(Output('cytoscape-tapNodeData-json', 'children'),
-    #               [Input('cytoscape-event-callbacks-1', 'tapNodeData')])
-    # def displayTapNodeData(data):
-    #     return json.dumps(data, indent=2)
-    #
-    #
-    # @app.callback(
-    #     Output('model_data', 'children'),
-    #     [Input("btn_add_node", "n_clicks_timestamp")]
-    # )
-    # def callback(value):
-    #     return "pressed"
-    #     print("pressed")
+    # add button
+    button = html.Button(id="button", children="Submit")
 
-    # @app.callback(
-    #     Output('r0_slider_text', 'children'),
-    #     [Input("r0_slider", "value")]
-    # )
-    # def callback(value):
-    #     return r0_callback(value)
+    #top_img_files, top_values = search("dog", n_results=6)
+
+    content_div = html.Div(id="content-div")
+
+
+
+
+
+
+
+    app.layout = html.Div(children=[title_div, text_input, label1, button, content_div])
+
+
+    # @app.callback(Output("output", "children"), Input("input", "value"))
+    # def update_output(input):
+    #     if not input:
+    #         raise PreventUpdate
     #
+    #     try:
+    #         img = np.array(Image.open("test.jpg"))
+    #     except OSError:
+    #         raise PreventUpdate
     #
-    # @app.callback(
-    #     Output('seasonality_slider_text', 'children'),
-    #     [Input("seasonality_slider", "value")]
-    # )
-    # def callback(value):
-    #     return seasonality_callback(value)
+    #     fig = px.imshow(img, color_continuous_scale="gray")
+    #     fig.update_layout(coloraxis_showscale=False)
+    #     fig.update_xaxes(showticklabels=False)
+    #     fig.update_yaxes(showticklabels=False)
     #
-    #
-    # # duration callbacks
-    # @app.callback(
-    #     Output('latency_time_slider_text', 'children'),
-    #     [Input("latency_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return latency_time_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('infectious_time_slider_text', 'children'),
-    #     [Input("infectious_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return infectious_time_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('incubation_time_slider_text', 'children'),
-    #     [Input("incubation_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return incubation_time_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('symptom_time_slider_text', 'children'),
-    #     [Input("symptom_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return symptom_time_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('symptom2hospital_time_slider_text', 'children'),
-    #     [Input("symptom2hospital_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return symptom2hospital_time_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('hospital_time_slider_text', 'children'),
-    #     [Input("hospital_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return hospital_time_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('hospital2intensive_time_slider_text', 'children'),
-    #     [Input("hospital2intensive_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return hospital2intensive_time_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('intensive_time_slider_text', 'children'),
-    #     [Input("intensive_time_slider", "value")]
-    # )
-    # def callback(value):
-    #     return intensive_time_callback(value)
-    #
-    #
-    # # probability callbacks
-    # @app.callback(
-    #     Output('p_hospital_slider_text', 'children'),
-    #     [Input("p_hospital_slider", "value")]
-    # )
-    # def callback(value):
-    #     return p_hospital_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('p_hospital_intensive_slider_text', 'children'),
-    #     [Input("p_hospital_intensive_slider", "value")]
-    # )
-    # def callback(value):
-    #     return p_hospital_intensive_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output('p_intensive_dead_slider_text', 'children'),
-    #     [Input("p_intensive_dead_slider", "value")]
-    # )
-    # def callback(value):
-    #     return p_intensive_dead_callback(value)
-    #
-    #
-    # @app.callback(
-    #     Output("Graph", "figure"),
-    #     [Input("checklist", "value"),
-    #      Input("r0_slider", "value"),
-    #      Input("seasonality_slider", "value"),
-    #      Input("p_hospital_slider", "value"),
-    #      Input("p_hospital_intensive_slider", "value"),
-    #      Input("p_intensive_dead_slider", "value"),
-    #
-    #      Input("latency_time_slider", "value"),
-    #      Input("infectious_time_slider", "value"),
-    #      Input("incubation_time_slider", "value"),
-    #      Input("symptom_time_slider", "value"),
-    #      Input("symptom2hospital_time_slider", "value"),
-    #      Input("hospital_time_slider", "value"),
-    #      Input("hospital2intensive_time_slider", "value"),
-    #      Input("intensive_time_slider", "value")]
-    # )
-    # def select_graphs(selection, r0, seasonality, p_hospital, p_hospital_intensive, p_intensive_dead,
-    #                   latency_time, infectious_time, incubation_time, symptom_time, symptom2hospital_time,
-    #                   hospital_time, hospital2intensive_time, intensive_time):
-    #     return calculate_graph(selection, r0, seasonality, p_hospital, p_hospital_intensive, p_intensive_dead,
-    #                            latency_time, infectious_time, incubation_time, symptom_time, symptom2hospital_time,
-    #                            hospital_time, hospital2intensive_time, intensive_time, SYMPTOM2TEST_TIME)
+    #     return dcc.Graph(figure=fig)
+
+    @app.callback(
+        Output(component_id="content-div", component_property="children"),
+        [Input(component_id="button", component_property="n_clicks")],
+        [State(component_id="input-box", component_property="value")]
+    )
+    def update_label(n_clicks, input_value):
+        print(n_clicks)
+        if n_clicks is None:
+            print("n_clicks is None")
+            return "Enter a query"
+        else:
+            print(input_value)
+            top_img_files, top_values = search(input_value, n_results=6)
+            print("n_clicks is not None")
+            graphs = []
+
+            for i, img_file in enumerate(top_img_files):
+                img = Image.open(img_file)
+                img = ImageOps.exif_transpose(img)
+                img = np.array(img)
+
+                # img = np.array(Image.open("test.JPG"))
+                fig = px.imshow(img, color_continuous_scale="gray")
+                fig.update_layout(coloraxis_showscale=False)
+                fig.update_xaxes(showticklabels=False)
+                fig.update_yaxes(showticklabels=False)
+                g = dcc.Graph(figure=fig, config={'staticPlot': True})  # , style={'width': '30vh', 'height': '30vh'})
+                graphs.append(g)
+            return graphs
+
+
+
 
     app.run_server(debug=True, port = 8080, host ="0.0.0.0")
     #app.run_server(debug=True, port=8080, host="192.168.178.55")
