@@ -172,4 +172,6 @@ if __name__ == "__main__":
     #                            latency_time, infectious_time, incubation_time, symptom_time, symptom2hospital_time,
     #                            hospital_time, hospital2intensive_time, intensive_time, SYMPTOM2TEST_TIME)
 
-    app.run_server()
+    app.run_server(debug=True, port = 8080, host ="0.0.0.0")
+    #app.run_server(debug=True, port=8080, host="192.168.178.55")
+    #app.run_server()
