@@ -42,9 +42,11 @@ with torch.inference_mode():
         print(f"{i_batch}/{len(data_loader)}")
         imgs, paths = batch
         imgs = imgs.to(device)
-        feat = model.encode_image(imgs)
+        image_features = model.encode_image(imgs)
+        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        image_features *= model.logit_scale.exp()
 
-        features += feat.cpu().numpy().tolist()
+        features += image_features.cpu().numpy().tolist()
 
 
 df = pd.DataFrame({"path": files, "features": features})
