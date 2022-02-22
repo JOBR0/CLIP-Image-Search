@@ -1,6 +1,6 @@
 import mimetypes
 
-from PIL import Image
+from PIL import Image, ImageOps
 from torch.utils import data
 
 
@@ -24,6 +24,8 @@ class ImgDataset(data.Dataset):
     def __getitem__(self, index):
         path = self.image_list[index]
         img = Image.open(path)
+        # Apply stored rotation
+        img = ImageOps.exif_transpose(img)
 
         img = self.preprocess(img)
 
