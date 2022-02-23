@@ -1,3 +1,5 @@
+import os
+
 from glob import glob
 
 import torch
@@ -5,7 +7,7 @@ import clip
 from PIL import Image
 from torch.utils import data
 
-from util import get_image_extentions, ImgDataset
+from util import get_image_extentions, ImgDataset, filtered_collate
 import pandas as pd
 
 import argparse
@@ -16,24 +18,37 @@ import time
 def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=False):
     exts = get_image_extentions()
 
+    # Also consider for example .JPG instead of .jpg
+    exts_upper = [ext.upper() for ext in exts]
+    exts = exts_upper + exts
+
     files = []
 
+    print("Searching for images in {}".format(folder))
     for ext in exts:
         files += glob(f"{folder}/**/*{ext}", recursive=True)
 
     print(f"Found {len(files)} files")
 
+    # check if output file exists
+    if not os.path.exists(output_file) or overwrite:
+        print("Creating output file")
+        df = pd.DataFrame(columns=["path", "encoding"])
+        df.to_csv(output_file, index=False)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cpu"
+    # device = "cpu"
     print(device)
     model, preprocess = clip.load(model, device=device)
 
     dataset = ImgDataset(files, preprocess)
     data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
-                                  drop_last=False)
+                                  drop_last=False, collate_fn=filtered_collate)
 
     features = []
+    feat_paths = []
 
+    batches_before_save = 250
 
     with torch.inference_mode():
         for i_batch, batch in enumerate(data_loader):
@@ -52,18 +67,22 @@ def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=Fa
             image_features *= model.logit_scale.exp()
 
             features += image_features.cpu().numpy().tolist()
+            feat_paths += paths
 
-    # TODO handle overwrite
+            if i_batch + 1 % batches_before_save == 0 or i_batch + 1 == len(data_loader):
+                print("Saving")
+                df = pd.DataFrame({"path": feat_paths, "features": features})
+                df.to_csv(output_file, index=False, mode="a", header=False)
 
-    df = pd.DataFrame({"path": files, "features": features})
-    df.to_csv(output_file)
+                features = []
+                feat_paths = []
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--folder", type=str, default="//nas_enbaer/Jonas/Fotos")
-    parser.add_argument("--output", type=str, default="C:/Users/Jonas/Desktop/reps.csv")
+    parser.add_argument("--folder", type=str, required=True, help="Folder to search for images")
+    parser.add_argument("--output", type=str, default="./encoded.csv")
     parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--num_workers", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
