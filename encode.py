@@ -33,7 +33,7 @@ def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=Fa
     # check if output file exists
     if not os.path.exists(output_file) or overwrite:
         print("Creating output file")
-        df = pd.DataFrame(columns=["path", "encoding"])
+        df = pd.DataFrame(columns=["path", "features"])
         df.to_csv(output_file, index=False)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -69,7 +69,7 @@ def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=Fa
             features += image_features.cpu().numpy().tolist()
             feat_paths += paths
 
-            if i_batch + 1 % batches_before_save == 0 or i_batch + 1 == len(data_loader):
+            if (i_batch + 1) % batches_before_save == 0 or i_batch + 1 == len(data_loader):
                 print("Saving")
                 df = pd.DataFrame({"path": feat_paths, "features": features})
                 df.to_csv(output_file, index=False, mode="a", header=False)
