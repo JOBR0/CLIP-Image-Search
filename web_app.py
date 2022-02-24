@@ -1,8 +1,6 @@
 import base64
-import datetime
 import io
 import os
-import time
 
 import clip
 
@@ -13,7 +11,6 @@ from dash import dcc, ALL
 from dash import html
 from dash.dependencies import Input, Output, State
 from dash.long_callback import DiskcacheLongCallbackManager
-from flask import Flask
 
 from PIL import Image, ImageOps
 import numpy as np
@@ -24,8 +21,6 @@ from search import search, load_features, encode_text, encode_images
 ## Diskcache
 import diskcache
 
-from functools import partial
-
 N_RESULTS = 30
 STATIC_IMAGE_ROUTE = "/static/"
 
@@ -35,9 +30,9 @@ def create_img_div(img_path):
     # folder = os.path.basename(os.path.normpath(img_path))
 
     outer_box = html.Div(
-        style={"color": "white", "background-color": "black", "padding": "5px", "margin": "5px", "float": "left"})
+        style={ "padding": "5px", "margin": "5px", "float": "left"})
 
-    title_box = html.Div(children=folder, style={"background-color": "green", "text-align": "center", "padding": "5px"})
+    title_box = html.Div(children=folder, style={"text-align": "center", "padding": "5px"})
 
     img = html.Img(src=STATIC_IMAGE_ROUTE + img_path, style={"height": "200px"}, title=img_path)
 
@@ -55,9 +50,6 @@ def b64_string_to_pil(base64_string):
 
 
 def parse_contents(contents, filename, date, index):
-    # extract image data and decode
-    # pil_img = b64_string_to_pil(contents.split(",")[1])
-
     return html.Div([
         # HTML images accept base64 encoded strings in the same format
         # that is supplied by the upload
@@ -70,15 +62,10 @@ def parse_contents(contents, filename, date, index):
 
 def init_app():
     print("start web app")
-    # server = Flask(__name__)
-    cache = diskcache.Cache("./cache")
-    long_callback_manager = DiskcacheLongCallbackManager(cache)
-    # app = dash.Dash(__name__, server=server, long_callback_manager=long_callback_manager)
     external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-    app = dash.Dash(__name__,
-                    long_callback_manager=long_callback_manager)  # , external_stylesheets=external_stylesheets)
+    app = dash.Dash(__name__)#, external_stylesheets=external_stylesheets)
 
-    app.config.suppress_callback_exceptions = True
+    #app.config.suppress_callback_exceptions = True
 
     device = "cpu"
     print(f"Using device: {device}")
@@ -94,7 +81,7 @@ def init_app():
     button = html.Button(id="button", children="Search", style={"font-size": "50px"})
 
     ctrl_div_left = html.Div(children=[text_input, button],
-                             style={"float": "left", "background-color": "blue", "width": "50%",
+                             style={"float": "left",  "width": "50%",
 
                                     "padding": "10px", "box-sizing": "border-box"})
 
@@ -122,46 +109,25 @@ def init_app():
             'borderRadius': '5px',
             'textAlign': 'center',
             # 'margin': '10px',
-            'background-color': 'green'
+            #"""'background-color': 'green'"""
         },
         # Allow multiple files to be uploaded
         multiple=True
     )
 
-    # upload_output = html.Div(id='output-image-upload', style={"float": "left"})
-
-    # store = dcc.Store(id="image-paths")
-    ctrl_div_right = html.Div(children=[upload], style={"float": "right", "background-color": "red", "width": "50%",
+    ctrl_div_right = html.Div(children=[upload], style={"float": "right", "width": "50%",
                                                         "padding": "10px", "box-sizing": "border-box"})
 
     ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
-                        style={"padding": "0px", "background-color": "pink" })
+                        style={"padding": "0px",})
+    #                           """""background-color": "pink""""" })
 
-    content_div = html.Div(id="content-div", style={ "background-color": "orange", "display":"inline-block"})
+    content_div = html.Div(id="content-div", style={ "display":"inline-block"})
 
     app.layout = html.Div(children=[ctrl_div, content_div])
 
     app.title = "CLIP Search"
 
-    # @app.callback(Output('output-image-upload', 'children'),
-    #               Input('del-button', 'n_clicks'),
-    #               State('output-image-upload', 'children'))
-    # def update_output(n_clicks, current_children):
-    #     children = current_children or []
-    #
-    #     print("event")
-    #
-    #     # if list_of_contents is not None:
-    #     #     children = current_children + [
-    #     #         parse_contents(c, n, d) for c, n, d in
-    #     #         zip(list_of_contents, list_of_names, list_of_dates)]
-    #
-    #     if len(children) > 0:
-    #         empty_div_style = {'display': 'none'}
-    #     else:
-    #         empty_div_style = {'display': 'block'}
-    #
-    #     return []
 
     @app.callback(Output('output-image-upload', 'children'),
                   Output('empty-div', 'style'),
@@ -221,9 +187,6 @@ def init_app():
         state=[State(component_id="input-box", component_property="value"),
                State(component_id="output-image-upload", component_property="children")]
         , )
-    # running=[(Output("button", "disabled"), True, False)],
-    # progress=Output("label1", "children"),
-    # manager=long_callback_manager,)
     def callback(n_clicks, text_input, image_inputs):  # , model=model, device=device, image_features=image_features):
         print("callback")
         print(n_clicks)
@@ -264,22 +227,10 @@ def init_app():
             path = img_file[13:]
 
             img = create_img_div(path)
-
-            # img = html.Img(src=STATIC_IMAGE_ROUTE + path, style={"height": "500px"})
             imgs.append(img)
-            # set_progress(f"{i}/{len(top_img_files)}")
 
         return imgs
 
-    # @app.long_callback(
-    #     output=Output("content-div", "children"),
-    #     inputs=Input("button", "n_clicks"),
-    #     state=State(component_id="input-box", component_property="value"),
-    #     running=[(Output("button", "disabled"), True, False)],
-    #     progress=Output("label1", "children"),
-    #     manager=long_callback_manager,)
-    # def callback_wrapper(set_progress, n_clicks, input_value):
-    #     return callback(set_progress, n_clicks, input_value)
 
     return app
 
