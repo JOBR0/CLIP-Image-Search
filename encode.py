@@ -15,7 +15,7 @@ import argparse
 import time
 
 
-def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=False):
+def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=False, skip_existing=True):
     exts = get_image_extentions()
 
     # Also consider for example .JPG instead of .jpg
@@ -35,6 +35,12 @@ def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=Fa
         print("Creating output file")
         df = pd.DataFrame(columns=["path", "features"])
         df.to_csv(output_file, index=False)
+
+    elif skip_existing:
+        print("Skipping existing file")
+        df = pd.read_csv(output_file)
+        encoded_files = set(df["path"].to_list())
+        files = list(set(files) - encoded_files)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # device = "cpu"
@@ -60,14 +66,16 @@ def encode(folder, output_file, model, batch_size=2, num_workers=2, overwrite=Fa
                 start = time.time()
                 print(f"{i_batch}/{len(data_loader)}")
 
-            imgs, paths = batch
-            imgs = imgs.to(device)
-            image_features = model.encode_image(imgs)
-            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-            image_features *= model.logit_scale.exp()
+            # If no image in batch could be loaded None is returned
+            if batch is not None:
+                imgs, paths = batch
+                imgs = imgs.to(device)
+                image_features = model.encode_image(imgs)
+                image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+                image_features *= model.logit_scale.exp()
 
-            features += image_features.cpu().numpy().tolist()
-            feat_paths += paths
+                features += image_features.cpu().numpy().tolist()
+                feat_paths += paths
 
             if (i_batch + 1) % batches_before_save == 0 or i_batch + 1 == len(data_loader):
                 print("Saving")
@@ -86,6 +94,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--num_workers", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--skip_existing", action="store_false", help="Skip files that are already encoded")
     parser.add_argument("--model", type=str, default="ViT-B/32")
     args = parser.parse_args()
 
@@ -98,5 +107,6 @@ if __name__ == "__main__":
         model=args.model,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        overwrite=args.overwrite
+        overwrite=args.overwrite,
+        skip_existing=args.skip_existing
     )

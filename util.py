@@ -17,6 +17,8 @@ def get_image_extentions():
 def filtered_collate(batch):
     """Filters out None values from a batch if images failed to load"""
     batch = list(filter(lambda x: x is not None, batch))
+    if len(batch) == 0:
+        return None
     return data.dataloader.default_collate(batch)
 
 
