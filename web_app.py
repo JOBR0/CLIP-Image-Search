@@ -10,16 +10,14 @@ import torch
 from dash import dcc, ALL
 from dash import html
 from dash.dependencies import Input, Output, State
-from dash.long_callback import DiskcacheLongCallbackManager
 
-from PIL import Image, ImageOps
+
+from PIL import Image
 import numpy as np
-import plotly.express as px
+
 
 from search import search, load_features, encode_text, encode_images
 
-## Diskcache
-import diskcache
 
 N_RESULTS = 30
 STATIC_IMAGE_ROUTE = "/static/"
@@ -78,7 +76,7 @@ def init_app():
                            style={"font-size": "50px", "width": "100%", "box-sizing": "border-box"})
 
     # add button
-    button = html.Button(id="button", children="Search", style={"font-size": "50px"})
+    button = html.Button(id="button", children="Search", style={"font-size": "50px", "margin-top": "10px"})
 
     ctrl_div_left = html.Div(children=[text_input, button],
                              style={"float": "left",  "width": "50%",
@@ -103,7 +101,7 @@ def init_app():
             "float": "right",
             "box-sizing": "border-box",
             #'height': '300px',
-            'lineHeight': '60px',
+            'lineHeight': '150px',
             'borderWidth': '1px',
             'borderStyle': 'dashed',
             'borderRadius': '5px',
