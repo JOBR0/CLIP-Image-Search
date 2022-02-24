@@ -39,7 +39,9 @@ def init_app():
     print(f"Using device: {device}")
     model, preprocess = clip.load("ViT-B/32", device=device)
 
-    image_features, paths = load_features(device, "C:/Users/Jonas/Desktop/reps.csv")
+    #image_features, paths = load_features(device, "C:/Users/Jonas/Desktop/encoded_fixed.csv")
+
+    image_features = np.load("image_features.npy")
 
     title_div = html.Div(html.H1("CLIP Semantic Search"), className="title")
 
@@ -55,9 +57,6 @@ def init_app():
     # top_img_files, top_values = search("dog", n_results=6)
 
     content_div = html.Div(id="content-div")
-
-    image_filename = "test2.png"  # replace with your own image
-    encoded_image = base64.b64encode(open(image_filename, 'rb').read())
 
     static_image_route = "/static/"
 
@@ -101,7 +100,7 @@ def init_app():
         return flask.send_from_directory("//nas_enbaer", f"{filename}.{ext}")
         #return flask.send_from_directory("", image_path)
 
-    def callback(set_progress, n_clicks, input_value, model=model, device=device, image_features=image_features, paths=paths):
+    def callback(set_progress, n_clicks, input_value, model=model, device=device, image_features=image_features):
         print("callback")
         print(n_clicks)
         if n_clicks is None:
@@ -113,7 +112,6 @@ def init_app():
         print("start search")
         top_img_files, top_values = search(query_features=text_features,
                                            image_features=image_features,
-                                           paths=paths,
                                            n_results=6)
         print("end search")
         imgs = []
@@ -136,96 +134,6 @@ def init_app():
     def callback_wrapper(set_progress, n_clicks, input_value):
         return callback(set_progress, n_clicks, input_value)
 
-    # @app.long_callback(
-    #     Output(component_id="image-paths", component_property="data"),
-    #     Input(component_id="button", component_property="n_clicks"),
-    #     State(component_id="input-box", component_property="value"),
-    #     # running=[
-    #     #     (Output("button", "disabled"), True, False)
-    #     # ],
-    #     # cancel=[Input("cancel_button_id", "n_clicks")],
-    #     # progress=Output("content-div", "children"),
-    #     progress=Output("label1", "children"),
-    #     # progress_default=[],
-    #     # interval=1000,
-    # )
-    # def callback(set_progress, n_clicks, input_value, model=model, device=device, image_features=image_features,
-    #              paths=paths):
-    #     print(n_clicks)
-    #     if n_clicks is None:
-    #         print("n_clicks is None")
-    #         return None
-    #     else:
-    #         print(input_value)
-    #         text_features = encode_text(input_value, model, device)
-    #
-    #         print("start search")
-    #         top_img_files, top_values = search(query_features=text_features,
-    #                                            image_features=image_features,
-    #                                            paths=paths,
-    #                                            n_results=6)
-    #         print("end search")
-    #         print("n_clicks is not None")
-    #         graphs = []
-    #
-    #         for i, img_file in enumerate(top_img_files):
-    #             img = Image.open(img_file)
-    #             img = ImageOps.exif_transpose(img)
-    #             img = np.array(img)
-    #
-    #             # img = np.array(Image.open("test.JPG"))
-    #             fig = px.imshow(img, color_continuous_scale="gray")
-    #             fig.update_layout(coloraxis_showscale=False)
-    #             fig.update_xaxes(showticklabels=False)
-    #             fig.update_yaxes(showticklabels=False)
-    #             g = dcc.Graph(figure=fig, config={'staticPlot': True})  # , style={'width': '30vh', 'height': '30vh'})
-    #             graphs.append(g)
-    #             set_progress(f"{i}/{len(top_img_files)}")
-    #             # set_progress(graphs)
-    #         print("return graphs")
-    #         return None
-
-    # @app.callback(
-    #     Output(component_id="content-div", component_property="children"),
-    #     [Input(component_id="button", component_property="n_clicks")],
-    #     [State(component_id="input-box", component_property="value")]
-    # )
-    # def update_label(n_clicks, input_value):
-    #     print(n_clicks)
-    #     if n_clicks is None:
-    #         print("n_clicks is None")
-    #         return "Enter a query"
-    #     else:
-    #         print(input_value)
-    #         text_features = encode_text(input_value, model, device)
-    #
-    #         print("start search")
-    #         top_img_files, top_values = search(query_features=text_features,
-    #                                            image_features=image_features,
-    #                                            paths=paths,
-    #                                            n_results=6)
-    #         print("end search")
-    #         print("n_clicks is not None")
-    #         graphs = []
-    #
-    #         for i, img_file in enumerate(top_img_files):
-    #             img = Image.open(img_file)
-    #             img = ImageOps.exif_transpose(img)
-    #             img = np.array(img)
-    #
-    #             # img = np.array(Image.open("test.JPG"))
-    #             fig = px.imshow(img, color_continuous_scale="gray")
-    #             fig.update_layout(coloraxis_showscale=False)
-    #             fig.update_xaxes(showticklabels=False)
-    #             fig.update_yaxes(showticklabels=False)
-    #             g = dcc.Graph(figure=fig, config={'staticPlot': True})  # , style={'width': '30vh', 'height': '30vh'})
-    #             graphs.append(g)
-    #         print("return graphs")
-    #         return graphs
-
-
-    # app.run_server(debug=True, port=8080, host="192.168.178.55")
-    # app.run_server()
     return app
 
 
