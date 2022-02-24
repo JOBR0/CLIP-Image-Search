@@ -1,3 +1,5 @@
+import argparse
+
 import base64
 import io
 import os
@@ -58,7 +60,7 @@ def parse_contents(contents, filename, date, index):
         , style={"position": "relative", "float": "left", "margin": "10px"})
 
 
-def init_app():
+def init_app(path_prefix):
     print("start web app")
     external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
     app = dash.Dash(__name__)#, external_stylesheets=external_stylesheets)
@@ -176,7 +178,7 @@ def init_app():
         # if image_name not in list_of_images:
         #     raise Exception('"{}" is excluded from the allowed static files'.format(image_path))
 
-        return flask.send_from_directory("//nas_enbaer", f"{filename}.{ext}")
+        return flask.send_from_directory(path_prefix, f"{filename}.{ext}")
         # return flask.send_from_directory("", image_path)
 
     @app.callback(
@@ -222,9 +224,9 @@ def init_app():
         print("end search")
         imgs = []
         for i, img_file in enumerate(top_img_files):
-            path = img_file[13:]
+            #path = img_file[13:]
 
-            img = create_img_div(path)
+            img = create_img_div(img_file)
             imgs.append(img)
 
         return imgs
@@ -234,6 +236,10 @@ def init_app():
 
 
 if __name__ == "__main__":
-    app = init_app()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path_prefix", type=str, default="", help="Prefix added to image paths that are loaded from disk")
+    args = parser.parse_args()
+
+    app = init_app(path_prefix=args.path_prefix)
     # use_reloader=False prevents wierd multiple runs
     app.run_server(debug=True, port=8080, host="0.0.0.0", use_reloader=False)
