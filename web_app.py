@@ -9,7 +9,7 @@ import clip
 import dash
 import flask
 import torch
-from dash import dcc
+from dash import dcc, ALL
 from dash import html
 from dash.dependencies import Input, Output, State
 from dash.long_callback import DiskcacheLongCallbackManager
@@ -54,17 +54,18 @@ def b64_string_to_pil(base64_string):
     return Image.open(io.BytesIO(imgdata))
 
 
-def parse_contents(contents, filename, date):
+def parse_contents(contents, filename, date, index):
     # extract image data and decode
     # pil_img = b64_string_to_pil(contents.split(",")[1])
 
     return html.Div([
         # HTML images accept base64 encoded strings in the same format
         # that is supplied by the upload
-        html.Img(src=contents, style={"height": "50px"}),
-        html.Button(children="X", style={"position": "absolute", "top": "-5px", "right": "-5px"}),
+        html.Img(src=contents, style={"height": "150px"}),
+        html.Button(id={"type": "del-button", "index": index}, children="X",
+                    style={"position": "absolute", "top": "-5px", "right": "-5px"}),
     ]
-    ,style={"position": "relative"})
+        , style={"position": "relative", "float": "left", "margin": "10px"})
 
 
 def init_app():
@@ -77,71 +78,129 @@ def init_app():
     app = dash.Dash(__name__,
                     long_callback_manager=long_callback_manager)  # , external_stylesheets=external_stylesheets)
 
-    device = "cpu"
+    app.config.suppress_callback_exceptions = True
 
+    device = "cpu"
     print(f"Using device: {device}")
     model, preprocess = clip.load("ViT-B/32", device=device)
 
-    # image_features, paths = load_features(device, "C:/Users/Jonas/Desktop/encoded_fixed.csv")
-
     image_features = np.load("image_features.npy")
 
-    # title_div = html.Div(html.H1("CLIP Semantic Search"), className="title")
-
     # add text input
-    text_input = dcc.Input(id="input-box", type="text", placeholder="Enter a Text Query", style={"font-size": "50px"})
-
-    # add label
-    # label1 = html.Label("Enter a query", id="label1")
+    text_input = dcc.Input(id="input-box", type="text", placeholder="Enter a Text Query",
+                           style={"font-size": "50px", "width": "100%", "box-sizing": "border-box"})
 
     # add button
-    button = html.Button(id="button", children="Submit")
+    button = html.Button(id="button", children="Search", style={"font-size": "50px"})
 
-    # top_img_files, top_values = search("dog", n_results=6)
+    ctrl_div_left = html.Div(children=[text_input, button],
+                             style={"float": "left", "background-color": "blue", "width": "50%",
 
-    content_div = html.Div(id="content-div")
+                                    "padding": "10px", "box-sizing": "border-box"})
+
+    empty_div = html.Div([
+        'Drag and Drop or ',
+        html.A('Select Image Queries'),
+
+    ],
+        id='empty-div', )
+
+    image_query_div = html.Div(id='output-image-upload')
 
     upload = dcc.Upload(
         id='upload-image',
-        children=html.Div([
-            'Drag and Drop or ',
-            html.A('Select Image Queries')
-        ]),
+        children=
+        [empty_div, image_query_div],
         style={
-            'width': '50%',
-            'height': '60px',
-            'lineHeight': '60px',
+            'width': '100%',
+            "float": "right",
+            "box-sizing": "border-box",
+            'height': '300px',
+            # 'lineHeight': '60px',
             'borderWidth': '1px',
             'borderStyle': 'dashed',
             'borderRadius': '5px',
-            'textAlign': 'center',
-            'margin': '10px'
+            # 'textAlign': 'center',
+            # 'margin': '10px',
+            'background-color': 'green'
         },
         # Allow multiple files to be uploaded
         multiple=True
     )
 
-    upload_output = html.Div(id='output-image-upload', style={"float": "left"})
+    # upload_output = html.Div(id='output-image-upload', style={"float": "left"})
 
-    store = dcc.Store(id="image-paths")
+    # store = dcc.Store(id="image-paths")
+    ctrl_div_right = html.Div(children=[upload], style={"float": "right", "background-color": "red", "width": "50%",
+                                                        "padding": "10px", "box-sizing": "border-box"})
 
-    app.layout = html.Div(children=[text_input, upload, upload_output, button, content_div, store])
+    ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
+                        style={"padding": "0px", "height": "500px", "background-color": "pink"})  # , "display":"flex"})
+
+    content_div = html.Div(id="content-div")
+
+    app.layout = html.Div(children=[ctrl_div, content_div])
 
     app.title = "CLIP Search"
 
+    # @app.callback(Output('output-image-upload', 'children'),
+    #               Input('del-button', 'n_clicks'),
+    #               State('output-image-upload', 'children'))
+    # def update_output(n_clicks, current_children):
+    #     children = current_children or []
+    #
+    #     print("event")
+    #
+    #     # if list_of_contents is not None:
+    #     #     children = current_children + [
+    #     #         parse_contents(c, n, d) for c, n, d in
+    #     #         zip(list_of_contents, list_of_names, list_of_dates)]
+    #
+    #     if len(children) > 0:
+    #         empty_div_style = {'display': 'none'}
+    #     else:
+    #         empty_div_style = {'display': 'block'}
+    #
+    #     return []
+
     @app.callback(Output('output-image-upload', 'children'),
+                  Output('empty-div', 'style'),
+                  Output("upload-image", "disable_click"),
+                  Input({'type': 'del-button', 'index': ALL}, 'n_clicks'),
                   Input('upload-image', 'contents'),
                   State('upload-image', 'filename'),
                   State('upload-image', 'last_modified'),
                   State('output-image-upload', 'children'))
-    def update_output(list_of_contents, list_of_names, list_of_dates, current_children):
+    def update_output(n_clicks, list_of_contents, list_of_names, list_of_dates, current_children):
         current_children = current_children or []
 
-        if list_of_contents is not None:
-            children = current_children + [
-                parse_contents(c, n, d) for c, n, d in
+        clicked = False
+
+        if n_clicks is not None:
+            children = []
+            for i, clicks in enumerate(n_clicks):
+                if clicks is None:
+                    children.append(current_children[i])
+                else:
+                    clicked = True
+        else:
+            children = current_children
+
+        n_current_children = len(children)
+
+        if list_of_contents is not None and not clicked:
+            children = children + [
+                parse_contents(c, n, d, n_current_children) for c, n, d in
                 zip(list_of_contents, list_of_names, list_of_dates)]
-            return children
+
+        if len(children) > 0:
+            empty_div_style = {'display': 'none'}
+            disable_click = True
+        else:
+            empty_div_style = {'display': 'block'}
+            disable_click = False
+
+        return children, empty_div_style, disable_click
 
     # Add a static image route that serves images from desktop
     # Be *very* careful here - you don't want to serve arbitrary files
@@ -189,7 +248,8 @@ def init_app():
 
         if query_features.shape[0] == 0:
             print("No queries")
-            return []
+            return ['Drag and Drop or ',
+                    html.A('Select Image Queries'), ]
         elif query_features.shape[0] > 1:
             query_features = query_features.mean(dim=0).unsqueeze(0)
             query_features = query_features / query_features.norm(dim=-1, keepdim=True)
