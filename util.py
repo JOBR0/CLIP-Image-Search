@@ -14,6 +14,14 @@ def get_image_extentions():
     return exts
 
 
+def filtered_collate(batch):
+    """Filters out None values from a batch if images failed to load"""
+    batch = list(filter(lambda x: x is not None, batch))
+    if len(batch) == 0:
+        return None
+    return data.dataloader.default_collate(batch)
+
+
 class ImgDataset(data.Dataset):
     def __init__(self, file_list, preprocess):
         super().__init__()
@@ -23,7 +31,15 @@ class ImgDataset(data.Dataset):
 
     def __getitem__(self, index):
         path = self.image_list[index]
-        img = Image.open(path)
+        try:
+            img = Image.open(path)
+        except:
+            print(f"Error opening image: {path}")
+            with open("failed_images.txt", "a") as f:
+                f.write(path + "\n")
+            # return None which will be filtered out in filtered_collate
+            return None
+
         # Apply stored rotation
         img = ImageOps.exif_transpose(img)
 
