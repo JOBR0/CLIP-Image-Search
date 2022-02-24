@@ -103,7 +103,7 @@ def init_app():
         html.A('Select Image Queries'),
 
     ],
-        id='empty-div', )
+        id='empty-div', style={"text-align": "center", "width": "100%"})
 
     image_query_div = html.Div(id='output-image-upload')
 
@@ -115,12 +115,12 @@ def init_app():
             'width': '100%',
             "float": "right",
             "box-sizing": "border-box",
-            'height': '300px',
-            # 'lineHeight': '60px',
+            #'height': '300px',
+            'lineHeight': '60px',
             'borderWidth': '1px',
             'borderStyle': 'dashed',
             'borderRadius': '5px',
-            # 'textAlign': 'center',
+            'textAlign': 'center',
             # 'margin': '10px',
             'background-color': 'green'
         },
@@ -135,9 +135,9 @@ def init_app():
                                                         "padding": "10px", "box-sizing": "border-box"})
 
     ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
-                        style={"padding": "0px", "height": "500px", "background-color": "pink"})  # , "display":"flex"})
+                        style={"padding": "0px", "background-color": "pink" })
 
-    content_div = html.Div(id="content-div")
+    content_div = html.Div(id="content-div", style={ "background-color": "orange", "display":"inline-block"})
 
     app.layout = html.Div(children=[ctrl_div, content_div])
 
@@ -236,7 +236,7 @@ def init_app():
         else:
             text_query = torch.zeros(0, 512)
 
-        if image_inputs is not None:
+        if image_inputs is not None and len(image_inputs) > 0:
             # Extract images from children
             b64 = [inp["props"]["children"][0]["props"]["src"] for inp in image_inputs]
             images = [b64_string_to_pil(b64_img) for b64_img in b64]
