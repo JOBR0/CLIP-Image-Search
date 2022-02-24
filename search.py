@@ -1,3 +1,7 @@
+import dbm
+import os
+
+import numpy as np
 import pandas as pd
 from ast import literal_eval
 
@@ -7,8 +11,20 @@ import torch
 import math
 
 import matplotlib.pyplot as plt
-import numpy as np
 from PIL import Image, ImageOps
+import time
+
+def encode_images(image_files, model, preprocess, device):
+    images = []
+    for img in image_files:
+        images.append(preprocess(img))
+
+    images = torch.stack(images)
+
+    with torch.inference_mode():
+        image_features = model.encode_image(images)
+        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+    return image_features
 
 
 def encode_text(text, model, device):
@@ -19,35 +35,48 @@ def encode_text(text, model, device):
     return text_features
 
 
-def load_features(device):
-    output_file = "C:/Users/Jonas/Desktop/reps.csv"
-    df = pd.read_csv(output_file)
+def load_features(device, csv_file):
+    df = pd.read_csv(csv_file)
     image_features = [literal_eval(f) for f in df["features"]]
     image_features = torch.tensor(image_features).to(device)
     paths = df["path"].to_numpy()
     return image_features, paths
 
 
-def search(image_features, query_features, paths, n_results=6):
-    with torch.inference_mode():
-        print("search")
+def search(image_features, query_features, n_results=6):
+    #with torch.inference_mode():
+    print("search", flush=True)
 
-        # cosine similarity as logits
-        logits_per_image = image_features @ query_features.t()
+    # cosine similarity as logits
+    logits_per_image = image_features @ query_features.T
 
-        top_values, top_indices = torch.topk(logits_per_image.squeeze(), n_results)
-        top_indices = top_indices.cpu().numpy()
-        top_values = top_values.cpu().numpy()
+    logits_per_image = logits_per_image.squeeze()
+
+    top_indices = np.argsort(logits_per_image, axis=0)[::-1][:n_results]
+
+    top_values = logits_per_image[top_indices]
+
+    #top_values, top_indices = torch.topk(logits_per_image.squeeze(), n_results)
+        # top_indices = top_indices.cpu().numpy()
+        # top_values = top_values.cpu().numpy()
 
         # logits_per_text = logits_per_image.t()
 
-    top_img_files = paths[top_indices].tolist()
+    top_img_files = []
+    with dbm.open(os.path.join(".", "database"), 'r') as db:
+        for idx in top_indices:
+            path = db[str(idx).encode()]
+            top_img_files.append(path.decode())
+
+    #    print(paths)
+
+    #top_img_files = paths[top_indices].tolist()
 
     return top_img_files, top_values
 
 
 if __name__ == "__main__":
-    text = ["Blurry Image"]
+    text = ["Fire"]
     n_results = 6
 
     #device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -56,15 +85,21 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
     model, preprocess = clip.load("ViT-B/32", device=device)
 
-    image_features, paths = load_features(device)
+    output_file = "C:/Users/jonas/Desktop/random_numbers.csv"
 
-    text_features = encode_text(text, model, device)
 
+    print("Loading features")
+    image_features = np.load("image_features.npy")
+
+    print("Encoding text")
+    text_features = encode_text(text, model, device).cpu().numpy()
+
+    print("Searching")
     top_img_files, top_values = search(query_features=text_features,
                                        image_features=image_features,
-                                       paths=paths,
                                        n_results=n_results)
 
+    print("Plotting")
     rows = math.floor(math.sqrt(n_results))
     cols = math.ceil(n_results / rows)
 

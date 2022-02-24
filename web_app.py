@@ -18,7 +18,7 @@ from PIL import Image, ImageOps
 import numpy as np
 import plotly.express as px
 
-from search import search, load_features, encode_text
+from search import search, load_features, encode_text, encode_images
 
 ## Diskcache
 import diskcache
@@ -42,27 +42,21 @@ def create_img_div(img_path):
     
     return outer_box
 
-def stringToRGB(base64_string):
+def b64_string_to_pil(base64_string):
+    # remove header
+    base64_string = base64_string.split(",")[1]
+
     imgdata = base64.b64decode(str(base64_string))
     return Image.open(io.BytesIO(imgdata))
 
 def parse_contents(contents, filename, date):
     # extract image data and decode
-    pil_img = stringToRGB(contents.split(",")[1])
+   # pil_img = b64_string_to_pil(contents.split(",")[1])
 
     return html.Div([
-        #html.H5(filename),
-        #html.H6(datetime.datetime.fromtimestamp(date)),
-
         # HTML images accept base64 encoded strings in the same format
         # that is supplied by the upload
         html.Img(src=contents, style={"height": "50px"}),
-        #html.Hr(),
-        #html.Div('Raw Content'),
-        # html.Pre(contents[0:200] + '...', style={
-        #     'whiteSpace': 'pre-wrap',
-        #     'wordBreak': 'break-all'
-        # })
     ])
 
 
@@ -161,21 +155,31 @@ def init_app():
     @app.callback(
         output=Output("content-div", "children"),
         inputs=Input("button", "n_clicks"),
-        state=State(component_id="input-box", component_property="value"),)
+        state=[State(component_id="input-box", component_property="value"),
+               State(component_id="output-image-upload", component_property="children")]
+        ,)
         #running=[(Output("button", "disabled"), True, False)],
         #progress=Output("label1", "children"),
         #manager=long_callback_manager,)
-    def callback(n_clicks, input_value):#, model=model, device=device, image_features=image_features):
+    def callback(n_clicks, tex_input, image_inputs):#, model=model, device=device, image_features=image_features):
         print("callback")
         print(n_clicks)
         if n_clicks is None:
             return []
-        print(input_value)
-        print(input_value)
-        text_features = encode_text(input_value, model, device).cpu().numpy()
+        print(tex_input)
+        print(tex_input)
+        text_query = encode_text(tex_input, model, device).cpu().numpy()
+
+        b64 = image_inputs[0]["props"]["children"][0]["props"]["src"]
+
+        img_1 = b64_string_to_pil(b64)
+
+        image_queries = encode_images([img_1], model, preprocess, device).cpu().numpy()
+
+        query_features = image_queries
 
         print("start search")
-        top_img_files, top_values = search(query_features=text_features,
+        top_img_files, top_values = search(query_features=query_features,
                                            image_features=image_features,
                                            n_results=N_RESULTS)
         print("end search")
