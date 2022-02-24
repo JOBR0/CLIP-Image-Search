@@ -1,4 +1,7 @@
 import base64
+import datetime
+import io
+import os
 import time
 
 import clip
@@ -22,6 +25,46 @@ import diskcache
 
 from functools import partial
 
+N_RESULTS = 30
+STATIC_IMAGE_ROUTE = "/static/"
+
+def create_img_div(img_path):
+    folder = os.path.basename(os.path.dirname(os.path.normpath(img_path)))
+    #folder = os.path.basename(os.path.normpath(img_path))
+
+    outer_box = html.Div(style={"color": "white", "background-color": "black", "padding": "5px", "margin": "5px", "float": "left"})
+
+    title_box = html.Div(children=folder, style={"background-color": "green", "text-align": "center", "padding": "5px"})
+
+    img = html.Img(src=STATIC_IMAGE_ROUTE + img_path, style={"height": "200px"}, title=img_path)
+
+    outer_box.children = [title_box, img]
+    
+    return outer_box
+
+def stringToRGB(base64_string):
+    imgdata = base64.b64decode(str(base64_string))
+    return Image.open(io.BytesIO(imgdata))
+
+def parse_contents(contents, filename, date):
+    # extract image data and decode
+    pil_img = stringToRGB(contents.split(",")[1])
+
+    return html.Div([
+        #html.H5(filename),
+        #html.H6(datetime.datetime.fromtimestamp(date)),
+
+        # HTML images accept base64 encoded strings in the same format
+        # that is supplied by the upload
+        html.Img(src=contents, style={"height": "50px"}),
+        #html.Hr(),
+        #html.Div('Raw Content'),
+        # html.Pre(contents[0:200] + '...', style={
+        #     'whiteSpace': 'pre-wrap',
+        #     'wordBreak': 'break-all'
+        # })
+    ])
+
 
 def init_app():
 
@@ -31,7 +74,7 @@ def init_app():
     long_callback_manager = DiskcacheLongCallbackManager(cache)
     #app = dash.Dash(__name__, server=server, long_callback_manager=long_callback_manager)
     external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-    app = dash.Dash(__name__, long_callback_manager=long_callback_manager, external_stylesheets=external_stylesheets)
+    app = dash.Dash(__name__, long_callback_manager=long_callback_manager)#, external_stylesheets=external_stylesheets)
 
 
     device = "cpu"
@@ -43,13 +86,13 @@ def init_app():
 
     image_features = np.load("image_features.npy")
 
-    title_div = html.Div(html.H1("CLIP Semantic Search"), className="title")
+    #title_div = html.Div(html.H1("CLIP Semantic Search"), className="title")
 
     # add text input
     text_input = dcc.Input(id="input-box", type="text", placeholder="Enter a query")
 
     # add label
-    label1 = html.Label("Enter a query", id="label1")
+    #label1 = html.Label("Enter a query", id="label1")
 
     # add button
     button = html.Button(id="button", children="Submit")
@@ -58,7 +101,7 @@ def init_app():
 
     content_div = html.Div(id="content-div")
 
-    static_image_route = "/static/"
+    
 
     upload = dcc.Upload(
         id='upload-image',
@@ -80,18 +123,33 @@ def init_app():
         multiple=True
     )
 
+    upload_output = html.Div(id='output-image-upload')
+
 
 
 
     store = dcc.Store(id="image-paths")
 
-    app.layout = html.Div(children=[title_div, text_input, label1, button, upload, content_div, store])
+    app.layout = html.Div(children=[text_input, button, upload, upload_output, content_div, store])
+
+    app.title = "CLIP Search"
+
+    @app.callback(Output('output-image-upload', 'children'),
+                  Input('upload-image', 'contents'),
+                  State('upload-image', 'filename'),
+                  State('upload-image', 'last_modified'))
+    def update_output(list_of_contents, list_of_names, list_of_dates):
+        if list_of_contents is not None:
+            children = [
+                parse_contents(c, n, d) for c, n, d in
+                zip(list_of_contents, list_of_names, list_of_dates)]
+            return children
 
     # Add a static image route that serves images from desktop
     # Be *very* careful here - you don't want to serve arbitrary files
     # from your computer or server
     #@app.server.route(f"{static_image_route}<image_path>")
-    @app.server.route(f"{static_image_route}<path:filename>.<ext>")
+    @app.server.route(f"{STATIC_IMAGE_ROUTE}<path:filename>.<ext>")
     def serve_image(filename, ext):
         print(f"serving {filename}.{ext}")
         # if image_name not in list_of_images:
@@ -100,39 +158,48 @@ def init_app():
         return flask.send_from_directory("//nas_enbaer", f"{filename}.{ext}")
         #return flask.send_from_directory("", image_path)
 
-    def callback(set_progress, n_clicks, input_value, model=model, device=device, image_features=image_features):
+    @app.callback(
+        output=Output("content-div", "children"),
+        inputs=Input("button", "n_clicks"),
+        state=State(component_id="input-box", component_property="value"),)
+        #running=[(Output("button", "disabled"), True, False)],
+        #progress=Output("label1", "children"),
+        #manager=long_callback_manager,)
+    def callback(n_clicks, input_value):#, model=model, device=device, image_features=image_features):
         print("callback")
         print(n_clicks)
         if n_clicks is None:
             return []
         print(input_value)
         print(input_value)
-        text_features = encode_text(input_value, model, device)
+        text_features = encode_text(input_value, model, device).cpu().numpy()
 
         print("start search")
         top_img_files, top_values = search(query_features=text_features,
                                            image_features=image_features,
-                                           n_results=6)
+                                           n_results=N_RESULTS)
         print("end search")
         imgs = []
         for i, img_file in enumerate(top_img_files):
             path = img_file[13:]
 
-            img = html.Img(src=static_image_route + path, style={"height": "500px"})
+            img = create_img_div(path)
+
+            #img = html.Img(src=STATIC_IMAGE_ROUTE + path, style={"height": "500px"})
             imgs.append(img)
-            set_progress(f"{i}/{len(top_img_files)}")
+            #set_progress(f"{i}/{len(top_img_files)}")
 
         return imgs
 
-    @app.long_callback(
-        output=Output("content-div", "children"),
-        inputs=Input("button", "n_clicks"),
-        state=State(component_id="input-box", component_property="value"),
-        running=[(Output("button", "disabled"), True, False)],
-        progress=Output("label1", "children"),
-        manager=long_callback_manager,)
-    def callback_wrapper(set_progress, n_clicks, input_value):
-        return callback(set_progress, n_clicks, input_value)
+    # @app.long_callback(
+    #     output=Output("content-div", "children"),
+    #     inputs=Input("button", "n_clicks"),
+    #     state=State(component_id="input-box", component_property="value"),
+    #     running=[(Output("button", "disabled"), True, False)],
+    #     progress=Output("label1", "children"),
+    #     manager=long_callback_manager,)
+    # def callback_wrapper(set_progress, n_clicks, input_value):
+    #     return callback(set_progress, n_clicks, input_value)
 
     return app
 
