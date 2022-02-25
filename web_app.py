@@ -40,6 +40,7 @@ memory_release_time = None
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    raise exc_value
 
 
 sys.excepthook = handle_exception
@@ -80,9 +81,11 @@ def parse_contents(contents, filename, date, index):
         , style={"position": "relative", "float": "left", "margin": "10px"})
 
 
+
 logging.info("Running web app")
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
+
 
 device = "cpu"
 logging.info(f"Using device: {device}")
