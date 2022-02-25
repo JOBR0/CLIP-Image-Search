@@ -25,8 +25,7 @@ logging.basicConfig(
     filename="server.log",
     format="%(asctime)s %(levelname)-8s %(message)s",
     level=logging.INFO,
-    datefmt="%Y-%m-%d %H:%M:%S",
-    encoding="utf-8")
+    datefmt="%Y-%m-%d %H:%M:%S")
 
 N_RESULTS = 30
 STATIC_IMAGE_ROUTE = "/static/"
