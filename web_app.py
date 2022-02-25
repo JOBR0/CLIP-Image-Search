@@ -1,4 +1,5 @@
 import argparse
+import sys
 import time
 
 import base64
@@ -17,7 +18,7 @@ from dash.dependencies import Input, Output, State
 from PIL import Image
 import numpy as np
 
-from search import search, load_features, encode_text, encode_images
+from search import search, encode_text, encode_images
 
 import logging
 
@@ -27,7 +28,6 @@ handler = logging.FileHandler("server.log", "a", "utf-8")
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(message)s"))
 root_logger.addHandler(handler)
 
-
 N_RESULTS = 30
 STATIC_IMAGE_ROUTE = "/static/"
 
@@ -36,6 +36,13 @@ PATH_PREFIX = "/"
 SECONDS_TO_MEMORY_RELEASE = 40
 
 memory_release_time = None
+
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = handle_exception
 
 
 def create_img_div(img_path):
@@ -205,7 +212,7 @@ def update_output(n_clicks, list_of_contents, list_of_names, list_of_dates, curr
 # @app.server.route(f"{static_image_route}<image_path>")
 @app.server.route(f"{STATIC_IMAGE_ROUTE}<path:filename>.<ext>")
 def serve_image(filename, ext):
-    #logging.info(f"serving {filename}.{ext}")
+    # logging.info(f"serving {filename}.{ext}")
     # if image_name not in list_of_images:
     #     raise Exception(""{}" is excluded from the allowed static files'.format(image_path))
 
