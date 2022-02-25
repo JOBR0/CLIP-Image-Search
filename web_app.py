@@ -101,6 +101,8 @@ logging.info("Running web app")
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
 
+scheduler = APScheduler()
+
 def scheduleTask():
     print("This test runs every 3 seconds")
 
