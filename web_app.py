@@ -33,8 +33,8 @@ STATIC_IMAGE_ROUTE = "/static/"
 
 PATH_PREFIX = "/"
 
-SECONDS_TO_MEMORY_RELEASE = 10
-MEMORY_CALLBACK_INTERVAL = 1
+SECONDS_TO_MEMORY_RELEASE = 5 * 60  # 5 minutes
+MEMORY_CALLBACK_INTERVAL = 5 * 60  # 5 minutes
 
 memory_release_time = None
 
@@ -95,11 +95,9 @@ def load_data_if_required():
         image_features = np.load("image_features.npy")
 
 
-
 logging.info("Running web app")
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
-
 
 # add text input
 text_input = dcc.Input(id="input-box", type="text", placeholder="Enter a Text Query",
@@ -153,7 +151,7 @@ ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
 content_div = html.Div(id="content-div", style={"display": "inline-block"})
 
 # release memory if not used after a while
-memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL*1000, n_intervals=0)
+memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL * 1000, n_intervals=0)
 
 
 def load_layout():
@@ -238,7 +236,8 @@ def serve_image(filename, ext):
     state=[State(component_id="input-box", component_property="value"),
            State(component_id="output-image-upload", component_property="children")]
     , )
-def search_callback(n_clicks, text_input, image_inputs):  # , model=model, device=device, image_features=image_features):
+def search_callback(n_clicks, text_input,
+                    image_inputs):  # , model=model, device=device, image_features=image_features):
     if n_clicks is None:
         return []
 
