@@ -30,7 +30,7 @@ handler = logging.FileHandler("server.log", "a", "utf-8")
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(message)s"))
 root_logger.addHandler(handler)
 
-N_RESULTS = 100
+N_RESULTS = 1000
 N_RESULTS_PER_CLICK = 40
 STATIC_IMAGE_ROUTE = "/static/"
 
