@@ -33,7 +33,8 @@ STATIC_IMAGE_ROUTE = "/static/"
 
 PATH_PREFIX = "/"
 
-SECONDS_TO_MEMORY_RELEASE = 40
+SECONDS_TO_MEMORY_RELEASE = 10
+MEMORY_CALLBACK_INTERVAL = 1
 
 memory_release_time = None
 
@@ -152,13 +153,11 @@ ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
 content_div = html.Div(id="content-div", style={"display": "inline-block"})
 
 # release memory if not used after a while
-memory_interval = dcc.Interval(id="memory_interval", interval=10000, n_intervals=0)
+memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL*1000, n_intervals=0)
 
 
 def load_layout():
     logging.info("Loading layout")
-    # global memory_release_time
-    # memory_release_time = time.time() + SECONDS_TO_MEMORY_RELEASE
     return html.Div(children=[ctrl_div, content_div, memory_interval])
 
 
@@ -170,12 +169,13 @@ app.title = "CLIP Search"
 @app.callback(Output("memory_interval", "disabled"),
               Input("memory_interval", "n_intervals"), )
 def clear_memory(n_intervals):
-    global memory_release_time
-    # if time.time() > memory_release_time:
-    #     print("clear memory")
-    #     del model
-    #     del image_features
-    return True
+    if memory_release_time is not None and time.time() > memory_release_time:
+        logging.info("Clearing memory")
+        vars_to_clear = ["model", "preprocess", "image_features", "device"]
+        for var in vars_to_clear:
+            if var in globals():
+                del globals()[var]
+    return False
 
 
 @app.callback(Output("output-image-upload", "children"),
@@ -243,6 +243,9 @@ def search_callback(n_clicks, text_input, image_inputs):  # , model=model, devic
         return []
 
     load_data_if_required()
+    # Increase time before data gets released again
+    global memory_release_time
+    memory_release_time = time.time() + SECONDS_TO_MEMORY_RELEASE
 
     if text_input is not None and text_input.strip() != "":
         text_query = encode_text(text_input, model, device)
