@@ -44,9 +44,6 @@ def load_features(device, csv_file):
 
 
 def search(image_features, query_features, n_results=6):
-    #with torch.inference_mode():
-    print("search", flush=True)
-
     # cosine similarity as logits
     logits_per_image = image_features @ query_features.T
 
@@ -56,21 +53,11 @@ def search(image_features, query_features, n_results=6):
 
     top_values = logits_per_image[top_indices]
 
-    #top_values, top_indices = torch.topk(logits_per_image.squeeze(), n_results)
-        # top_indices = top_indices.cpu().numpy()
-        # top_values = top_values.cpu().numpy()
-
-        # logits_per_text = logits_per_image.t()
-
     top_img_files = []
     with dbm.open(os.path.join(".", "database"), 'r') as db:
         for idx in top_indices:
             path = db[str(idx).encode()]
             top_img_files.append(path.decode())
-
-    #    print(paths)
-
-    #top_img_files = paths[top_indices].tolist()
 
     return top_img_files, top_values
 
@@ -79,7 +66,6 @@ if __name__ == "__main__":
     text = ["Fire"]
     n_results = 6
 
-    #device = "cuda" if torch.cuda.is_available() else "cpu"
     device = "cpu"
 
     print(f"Using device: {device}")
