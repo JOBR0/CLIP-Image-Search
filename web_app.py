@@ -169,7 +169,7 @@ content_div = html.Div(id="content-div", style={"display": "inline-block"})
 
 # add button
 load_more = html.Button(id="load-button", children="Load More..",
-                        style={"font-size": "50px", "margin-top": "10px", "width": "100%", "visibility": "hidden"})
+                        style={"font-size": "50px", "margin-top": "10px", "width": "100%", "visibility": "hidden"}, disabled=False)
 
 index_store = dcc.Store(id="index-store", storage_type="memory")
 
@@ -240,27 +240,35 @@ def serve_image(filename, ext):
 
 @app.callback(
     Output("content-div", "children"),
+    Output("load-button", "disabled"),
     Input("load-button", "n_clicks"),
     State("index-store", "data"),
     State(component_id="content-div", component_property="children")
 )
 def show_images(n_clicks, index_store, current_children):
-    print("show_images n_clicks:", n_clicks)
-    print("show_images")
     if n_clicks is None:
-        return current_children
+        return current_children, False
 
     if len(index_store) == 0:
-        return []
+        return [], False
 
     slice_min = min(len(index_store["top_img_files"]), (n_clicks - 1) * N_RESULTS_PER_CLICK)
     slice_max = min(len(index_store["top_img_files"]), n_clicks * N_RESULTS_PER_CLICK)
 
-    children = current_children or []
+    if slice_max == len(index_store["top_img_files"]):
+        disable_button = True
+    else:
+        disable_button = False
+
+    if n_clicks == 1 or current_children is None:
+        children = []
+    else:
+        children = current_children
+
     for i, img_file in enumerate(index_store["top_img_files"][slice_min:slice_max]):
         img = create_img_div(img_file)
         children.append(img)
-    return children
+    return children, disable_button
 
 
 @app.callback(
@@ -277,8 +285,6 @@ def search_callback(n_clicks, n_submit, text_input,
                     image_inputs, button_style):  # , model=model, device=device, image_features=image_features):
     if n_clicks is None:
         return [], button_style, None
-
-    print("n_clicks: ", n_clicks)
 
     load_data_if_required()
     # Increase time before data gets released again
@@ -300,7 +306,6 @@ def search_callback(n_clicks, n_submit, text_input,
 
     query_features = torch.cat((text_query, image_queries), dim=0)
 
-    # TODO handle current style
     if query_features.shape[0] == 0:
         return [], button_style, 1
 
