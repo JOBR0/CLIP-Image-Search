@@ -1,4 +1,5 @@
 import argparse
+import time
 
 import base64
 import io
@@ -18,10 +19,23 @@ import numpy as np
 
 from search import search, load_features, encode_text, encode_images
 
+import logging
+
+logging.basicConfig(
+    filename="server.log",
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+    encoding="utf-8")
+
 N_RESULTS = 30
 STATIC_IMAGE_ROUTE = "/static/"
 
 PATH_PREFIX = "/"
+
+SECONDS_TO_MEMORY_RELEASE = 40
+
+memory_release_time = None
 
 
 def create_img_div(img_path):
@@ -59,14 +73,12 @@ def parse_contents(contents, filename, date, index):
         , style={"position": "relative", "float": "left", "margin": "10px"})
 
 
-print("start web app")
+logging.info("Running web app")
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
 
-
-
 device = "cpu"
-print(f"Using device: {device}")
+logging.info(f"Using device: {device}")
 model, preprocess = clip.load("ViT-B/32", device=device)
 
 image_features = np.load("image_features.npy")
@@ -84,30 +96,30 @@ ctrl_div_left = html.Div(children=[text_input, button],
                                 "padding": "10px", "box-sizing": "border-box"})
 
 empty_div = html.Div([
-    'Drag and Drop or ',
-    html.A('Select Image Queries'),
+    "Drag and Drop or ",
+    html.A("Select Image Queries"),
 
 ],
-    id='empty-div', style={"text-align": "center", "width": "100%"})
+    id="empty-div", style={"text-align": "center", "width": "100%"})
 
-image_query_div = html.Div(id='output-image-upload')
+image_query_div = html.Div(id="output-image-upload")
 
 upload = dcc.Upload(
-    id='upload-image',
+    id="upload-image",
     children=
     [empty_div, image_query_div],
     style={
-        'width': '100%',
+        "width": "100%",
         "float": "right",
         "box-sizing": "border-box",
-        # 'height': '300px',
-        'lineHeight': '150px',
-        'borderWidth': '1px',
-        'borderStyle': 'dashed',
-        'borderRadius': '5px',
-        'textAlign': 'center',
-        # 'margin': '10px',
-        # """'background-color': 'green'"""
+        # "height": "300px",
+        "lineHeight": "150px",
+        "borderWidth": "1px",
+        "borderStyle": "dashed",
+        "borderRadius": "5px",
+        "textAlign": "center",
+        # "margin": "10px",
+        # """"background-color": "green""""
     },
     # Allow multiple files to be uploaded
     multiple=True
@@ -122,19 +134,39 @@ ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
 
 content_div = html.Div(id="content-div", style={"display": "inline-block"})
 
-app.layout = html.Div(children=[ctrl_div, content_div])
+# release memory if not used after a while
+memory_interval = dcc.Interval(id="memory_interval", interval=10000, n_intervals=0)
+
+
+def load_layout():
+    logging.info("Loading layout")
+    global memory_release_time
+    memory_release_time = time.time() + SECONDS_TO_MEMORY_RELEASE
+    return html.Div(children=[ctrl_div, content_div])
+
+
+app.layout = load_layout()
 
 app.title = "CLIP Search"
 
 
-@app.callback(Output('output-image-upload', 'children'),
-              Output('empty-div', 'style'),
+@app.callback(Input("memory_interval", "n_intervals"), )
+def clear_memory():
+    global memory_release_time
+    # if time.time() > memory_release_time:
+    #     print("clear memory")
+    #     del model
+    #     del image_features
+
+
+@app.callback(Output("output-image-upload", "children"),
+              Output("empty-div", "style"),
               Output("upload-image", "disable_click"),
-              Input({'type': 'del-button', 'index': ALL}, 'n_clicks'),
-              Input('upload-image', 'contents'),
-              State('upload-image', 'filename'),
-              State('upload-image', 'last_modified'),
-              State('output-image-upload', 'children'))
+              Input({"type": "del-button", "index": ALL}, "n_clicks"),
+              Input("upload-image", "contents"),
+              State("upload-image", "filename"),
+              State("upload-image", "last_modified"),
+              State("output-image-upload", "children"))
 def update_output(n_clicks, list_of_contents, list_of_names, list_of_dates, current_children):
     current_children = current_children or []
 
@@ -158,24 +190,24 @@ def update_output(n_clicks, list_of_contents, list_of_names, list_of_dates, curr
             zip(list_of_contents, list_of_names, list_of_dates)]
 
     if len(children) > 0:
-        empty_div_style = {'display': 'none'}
+        empty_div_style = {"display": "none"}
         disable_click = True
     else:
-        empty_div_style = {'display': 'block'}
+        empty_div_style = {"display": "block"}
         disable_click = False
 
     return children, empty_div_style, disable_click
 
 
 # Add a static image route that serves images from desktop
-# Be *very* careful here - you don't want to serve arbitrary files
+# Be *very* careful here - you don"t want to serve arbitrary files
 # from your computer or server
 # @app.server.route(f"{static_image_route}<image_path>")
 @app.server.route(f"{STATIC_IMAGE_ROUTE}<path:filename>.<ext>")
 def serve_image(filename, ext):
-    print(f"serving {filename}.{ext}")
+    #logging.info(f"serving {filename}.{ext}")
     # if image_name not in list_of_images:
-    #     raise Exception('"{}" is excluded from the allowed static files'.format(image_path))
+    #     raise Exception(""{}" is excluded from the allowed static files'.format(image_path))
 
     return flask.send_from_directory(PATH_PREFIX, f"{filename}.{ext}")
     # return flask.send_from_directory("", image_path)
@@ -188,11 +220,8 @@ def serve_image(filename, ext):
            State(component_id="output-image-upload", component_property="children")]
     , )
 def callback(n_clicks, text_input, image_inputs):  # , model=model, device=device, image_features=image_features):
-    print("callback")
-    print(n_clicks)
     if n_clicks is None:
         return []
-    print(text_input)
 
     if text_input is not None and text_input.strip() != "":
         text_query = encode_text(text_input, model, device)
@@ -210,18 +239,17 @@ def callback(n_clicks, text_input, image_inputs):  # , model=model, device=devic
     query_features = torch.cat((text_query, image_queries), dim=0)
 
     if query_features.shape[0] == 0:
-        print("No queries")
-        return ['Drag and Drop or ',
-                html.A('Select Image Queries'), ]
+        return ["Drag and Drop or ",
+                html.A("Select Image Queries"), ]
     elif query_features.shape[0] > 1:
         query_features = query_features.mean(dim=0).unsqueeze(0)
         query_features = query_features / query_features.norm(dim=-1, keepdim=True)
 
-    print("start search")
+    logging.info("Start searching")
     top_img_files, top_values = search(query_features=query_features.cpu().numpy(),
                                        image_features=image_features,
                                        n_results=N_RESULTS)
-    print("end search")
+    logging.info("End searching")
     imgs = []
     for i, img_file in enumerate(top_img_files):
         # path = img_file[13:]
