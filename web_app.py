@@ -21,11 +21,12 @@ from search import search, load_features, encode_text, encode_images
 
 import logging
 
-logging.basicConfig(
-    filename="server.log",
-    format="%(asctime)s %(levelname)-8s %(message)s",
-    level=logging.INFO,
-    datefmt="%Y-%m-%d %H:%M:%S")
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler("server.log", "a", "utf-8")
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(message)s"))
+root_logger.addHandler(handler)
+
 
 N_RESULTS = 30
 STATIC_IMAGE_ROUTE = "/static/"
