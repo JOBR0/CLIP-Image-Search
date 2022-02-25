@@ -167,6 +167,7 @@ app.title = "CLIP Search"
 @app.callback(Output("memory_interval", "disabled"),
               Input("memory_interval", "n_intervals"), )
 def clear_memory(n_intervals):
+    print("Callback memory")
     if memory_release_time is not None and time.time() > memory_release_time:
         logging.info("Clearing memory")
         vars_to_clear = ["model", "preprocess", "image_features", "device"]
