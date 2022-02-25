@@ -30,7 +30,8 @@ handler = logging.FileHandler("server.log", "a", "utf-8")
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(message)s"))
 root_logger.addHandler(handler)
 
-N_RESULTS = 30
+N_RESULTS = 100
+N_RESULTS_PER_CLICK = 40
 STATIC_IMAGE_ROUTE = "/static/"
 
 PATH_PREFIX = "/"
@@ -96,6 +97,7 @@ def load_data_if_required():
         global image_features
         image_features = np.load("image_features.npy")
 
+
 def clear_memory():
     if memory_release_time is not None and time.time() > memory_release_time:
         logging.info("Clearing memory")
@@ -110,7 +112,6 @@ server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
 
 scheduler = APScheduler()
-
 
 scheduler.add_job(id="Memory Task", func=clear_memory, trigger="interval", seconds=MEMORY_CALLBACK_INTERVAL)
 scheduler.start()
@@ -166,14 +167,16 @@ ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
 
 content_div = html.Div(id="content-div", style={"display": "inline-block"})
 
-# release memory if not used after a while
-memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL * 1000, n_intervals=0,
-                               disabled=True)
+# add button
+load_more = html.Button(id="load-button", children="Load More..",
+                        style={"font-size": "50px", "margin-top": "10px", "width": "100%", "visibility": "hidden"})
+
+index_store = dcc.Store(id="index-store", storage_type="memory")
 
 
 def load_layout():
     logging.info("Loading layout")
-    return html.Div(children=[ctrl_div, content_div, memory_interval])
+    return html.Div(children=[ctrl_div, content_div, load_more, index_store])
 
 
 app.layout = load_layout()
@@ -236,15 +239,46 @@ def serve_image(filename, ext):
 
 
 @app.callback(
-    output=Output("content-div", "children"),
-    inputs=[Input("button", "n_clicks"), Input("input-box", "n_submit")],
-    state=[State(component_id="input-box", component_property="value"),
-           State(component_id="output-image-upload", component_property="children")]
-    , )
-def search_callback(n_clicks, n_submit, text_input,
-                    image_inputs):  # , model=model, device=device, image_features=image_features):
+    Output("content-div", "children"),
+    Input("load-button", "n_clicks"),
+    State("index-store", "data"),
+    State(component_id="content-div", component_property="children")
+)
+def show_images(n_clicks, index_store, current_children):
+    print("show_images n_clicks:", n_clicks)
+    print("show_images")
     if n_clicks is None:
+        return current_children
+
+    if len(index_store) == 0:
         return []
+
+    slice_min = min(len(index_store["top_img_files"]), (n_clicks - 1) * N_RESULTS_PER_CLICK)
+    slice_max = min(len(index_store["top_img_files"]), n_clicks * N_RESULTS_PER_CLICK)
+
+    children = current_children or []
+    for i, img_file in enumerate(index_store["top_img_files"][slice_min:slice_max]):
+        img = create_img_div(img_file)
+        children.append(img)
+    return children
+
+
+@app.callback(
+    Output("index-store", "data"),
+    Output("load-button", "style"),
+    Output("load-button", "n_clicks"),
+    # output=Output("content-div", "children"),
+    Input("button", "n_clicks"), Input("input-box", "n_submit"),
+    State(component_id="input-box", component_property="value"),
+    State(component_id="output-image-upload", component_property="children"),
+    State(component_id="load-button", component_property="style"),
+)
+def search_callback(n_clicks, n_submit, text_input,
+                    image_inputs, button_style):  # , model=model, device=device, image_features=image_features):
+    if n_clicks is None:
+        return [], button_style, None
+
+    print("n_clicks: ", n_clicks)
 
     load_data_if_required()
     # Increase time before data gets released again
@@ -266,9 +300,10 @@ def search_callback(n_clicks, n_submit, text_input,
 
     query_features = torch.cat((text_query, image_queries), dim=0)
 
+    # TODO handle current style
     if query_features.shape[0] == 0:
-        return ["Drag and Drop or ",
-                html.A("Select Image Queries"), ]
+        return [], button_style, 1
+
     elif query_features.shape[0] > 1:
         query_features = query_features.mean(dim=0).unsqueeze(0)
         query_features = query_features / query_features.norm(dim=-1, keepdim=True)
@@ -278,14 +313,19 @@ def search_callback(n_clicks, n_submit, text_input,
                                        image_features=image_features,
                                        n_results=N_RESULTS)
     logging.info("End searching")
-    imgs = []
-    for i, img_file in enumerate(top_img_files):
-        # path = img_file[13:]
 
-        img = create_img_div(img_file)
-        imgs.append(img)
+    data = {"top_img_files": top_img_files, "top_values": top_values}
 
-    return imgs
+    # imgs = []
+    # for i, img_file in enumerate(top_img_files):
+    #     # path = img_file[13:]
+    #
+    #     img = create_img_div(img_file)
+    #     imgs.append(img)
+
+    button_style["visibility"] = "visible"
+
+    return data, button_style, 1
 
 
 if __name__ == "__main__":
