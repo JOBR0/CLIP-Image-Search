@@ -1,3 +1,6 @@
+database.*
+image_features.npy
+
 playground.py
 
 *.csv
