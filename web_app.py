@@ -81,15 +81,24 @@ def parse_contents(contents, filename, date, index):
         , style={"position": "relative", "float": "left", "margin": "10px"})
 
 
+def load_data_if_required():
+    if "model" not in globals():
+        logging.info("Loading model")
+        global model, preprocess, device
+        device = "cpu"
+        model, preprocess = clip.load("ViT-B/32", device=device)
+
+    if "image_features" not in globals():
+        logging.info("Loading image features")
+        global image_features
+        image_features = np.load("image_features.npy")
+
+
+
 logging.info("Running web app")
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
 
-device = "cpu"
-logging.info(f"Using device: {device}")
-model, preprocess = clip.load("ViT-B/32", device=device)
-
-image_features = np.load("image_features.npy")
 
 # add text input
 text_input = dcc.Input(id="input-box", type="text", placeholder="Enter a Text Query",
@@ -148,8 +157,8 @@ memory_interval = dcc.Interval(id="memory_interval", interval=10000, n_intervals
 
 def load_layout():
     logging.info("Loading layout")
-    global memory_release_time
-    memory_release_time = time.time() + SECONDS_TO_MEMORY_RELEASE
+    # global memory_release_time
+    # memory_release_time = time.time() + SECONDS_TO_MEMORY_RELEASE
     return html.Div(children=[ctrl_div, content_div, memory_interval])
 
 
@@ -229,9 +238,11 @@ def serve_image(filename, ext):
     state=[State(component_id="input-box", component_property="value"),
            State(component_id="output-image-upload", component_property="children")]
     , )
-def callback(n_clicks, text_input, image_inputs):  # , model=model, device=device, image_features=image_features):
+def search_callback(n_clicks, text_input, image_inputs):  # , model=model, device=device, image_features=image_features):
     if n_clicks is None:
         return []
+
+    load_data_if_required()
 
     if text_input is not None and text_input.strip() != "":
         text_query = encode_text(text_input, model, device)
