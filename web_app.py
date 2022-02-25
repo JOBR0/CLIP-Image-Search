@@ -10,6 +10,8 @@ import clip
 
 import dash
 import flask
+from flask_apscheduler import APScheduler
+
 import torch
 from dash import dcc, ALL
 from dash import html
@@ -99,6 +101,12 @@ logging.info("Running web app")
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
 
+def scheduleTask():
+    print("This test runs every 3 seconds")
+
+scheduler.add_job(id = 'Scheduled Task', func=scheduleTask, trigger="interval", seconds=3)
+scheduler.start()
+
 # add text input
 text_input = dcc.Input(id="input-box", type="text", placeholder="Enter a Text Query",
                        style={"font-size": "50px", "width": "100%", "box-sizing": "border-box"})
@@ -151,7 +159,7 @@ ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
 content_div = html.Div(id="content-div", style={"display": "inline-block"})
 
 # release memory if not used after a while
-memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL * 1000, n_intervals=0)
+memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL * 1000, n_intervals=0, disabled=True)
 
 
 def load_layout():
