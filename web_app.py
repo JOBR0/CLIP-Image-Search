@@ -96,6 +96,14 @@ def load_data_if_required():
         global image_features
         image_features = np.load("image_features.npy")
 
+def clear_memory():
+    if memory_release_time is not None and time.time() > memory_release_time:
+        logging.info("Clearing memory")
+        vars_to_clear = ["model", "preprocess", "image_features", "device"]
+        for var in vars_to_clear:
+            if var in globals():
+                del globals()[var]
+
 
 logging.info("Running web app")
 server = flask.Flask(__name__)
@@ -103,10 +111,8 @@ app = dash.Dash(__name__, server=server)
 
 scheduler = APScheduler()
 
-def scheduleTask():
-    print("This test runs every 3 seconds")
 
-scheduler.add_job(id = 'Scheduled Task', func=scheduleTask, trigger="interval", seconds=3)
+scheduler.add_job(id="Memory Task", func=clear_memory, trigger="interval", seconds=MEMORY_CALLBACK_INTERVAL)
 scheduler.start()
 
 # add text input
@@ -161,7 +167,8 @@ ctrl_div = html.Div(children=[ctrl_div_left, ctrl_div_right],
 content_div = html.Div(id="content-div", style={"display": "inline-block"})
 
 # release memory if not used after a while
-memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL * 1000, n_intervals=0, disabled=True)
+memory_interval = dcc.Interval(id="memory_interval", interval=MEMORY_CALLBACK_INTERVAL * 1000, n_intervals=0,
+                               disabled=True)
 
 
 def load_layout():
@@ -172,19 +179,6 @@ def load_layout():
 app.layout = load_layout()
 
 app.title = "CLIP Search"
-
-
-@app.callback(Output("memory_interval", "disabled"),
-              Input("memory_interval", "n_intervals"), )
-def clear_memory(n_intervals):
-    print("Callback memory")
-    if memory_release_time is not None and time.time() > memory_release_time:
-        logging.info("Clearing memory")
-        vars_to_clear = ["model", "preprocess", "image_features", "device"]
-        for var in vars_to_clear:
-            if var in globals():
-                del globals()[var]
-    return False
 
 
 @app.callback(Output("output-image-upload", "children"),
