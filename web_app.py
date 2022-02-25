@@ -81,11 +81,9 @@ def parse_contents(contents, filename, date, index):
         , style={"position": "relative", "float": "left", "margin": "10px"})
 
 
-
 logging.info("Running web app")
 server = flask.Flask(__name__)
 app = dash.Dash(__name__, server=server)
-
 
 device = "cpu"
 logging.info(f"Using device: {device}")
@@ -152,7 +150,7 @@ def load_layout():
     logging.info("Loading layout")
     global memory_release_time
     memory_release_time = time.time() + SECONDS_TO_MEMORY_RELEASE
-    return html.Div(children=[ctrl_div, content_div])
+    return html.Div(children=[ctrl_div, content_div, memory_interval])
 
 
 app.layout = load_layout()
@@ -160,13 +158,15 @@ app.layout = load_layout()
 app.title = "CLIP Search"
 
 
-@app.callback(Input("memory_interval", "n_intervals"), )
-def clear_memory():
+@app.callback(Output("memory_interval", "disabled"),
+              Input("memory_interval", "n_intervals"), )
+def clear_memory(n_intervals):
     global memory_release_time
     # if time.time() > memory_release_time:
     #     print("clear memory")
     #     del model
     #     del image_features
+    return True
 
 
 @app.callback(Output("output-image-upload", "children"),
