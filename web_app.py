@@ -232,11 +232,11 @@ def serve_image(filename, ext):
 
 @app.callback(
     output=Output("content-div", "children"),
-    inputs=Input("button", "n_clicks"),
+    inputs=[Input("button", "n_clicks"), Input("input-box", "n_submit")],
     state=[State(component_id="input-box", component_property="value"),
            State(component_id="output-image-upload", component_property="children")]
     , )
-def search_callback(n_clicks, text_input,
+def search_callback(n_clicks, n_submit, text_input,
                     image_inputs):  # , model=model, device=device, image_features=image_features):
     if n_clicks is None:
         return []
