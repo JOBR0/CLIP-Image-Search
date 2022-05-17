@@ -112,7 +112,7 @@ def clear_memory():
 
 
 # download clip model
-clip.load(CLIP_MODEL, device=device, download_root="./clip")
+clip.load(CLIP_MODEL, device="cpu", download_root="./clip")
 
 
 logging.info("Running web app")
