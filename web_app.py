@@ -36,6 +36,8 @@ STATIC_IMAGE_ROUTE = "/static/"
 
 PATH_PREFIX = "/"
 
+CLIP_MODEL = "ViT-B/32"
+
 SECONDS_TO_MEMORY_RELEASE = 5 * 60  # 5 minutes
 MEMORY_CALLBACK_INTERVAL = 5 * 60  # 5 minutes
 
@@ -91,7 +93,7 @@ def load_data_if_required():
         global model, preprocess, device
         device = "cpu"
         logging.debug("mark1")
-        model, preprocess = clip.load("ViT-B/32", device=device, download_root="./clip")
+        model, preprocess = clip.load(CLIP_MODEL, device=device, download_root="./clip")
         logging.debug("mark2")
 
     if "image_features" not in globals():
@@ -107,6 +109,10 @@ def clear_memory():
         for var in vars_to_clear:
             if var in globals():
                 del globals()[var]
+
+
+# download clip model
+clip.load(CLIP_MODEL, device=device, download_root="./clip")
 
 
 logging.info("Running web app")
