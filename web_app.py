@@ -24,6 +24,8 @@ from search import search, encode_text, encode_images
 
 import logging
 
+from download_clip import CLIP_MODEL
+
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler("server.log", "a", "utf-8")
@@ -35,8 +37,6 @@ N_RESULTS_PER_CLICK = 40
 STATIC_IMAGE_ROUTE = "/static/"
 
 PATH_PREFIX = "/"
-
-CLIP_MODEL = "ViT-B/32"
 
 SECONDS_TO_MEMORY_RELEASE = 5 * 60  # 5 minutes
 MEMORY_CALLBACK_INTERVAL = 5 * 60  # 5 minutes
@@ -109,10 +109,6 @@ def clear_memory():
         for var in vars_to_clear:
             if var in globals():
                 del globals()[var]
-
-
-# download clip model
-clip.load(CLIP_MODEL, device="cpu", download_root="./clip")
 
 
 logging.info("Running web app")
