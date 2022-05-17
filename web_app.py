@@ -90,7 +90,9 @@ def load_data_if_required():
         logging.info("Loading model")
         global model, preprocess, device
         device = "cpu"
+        logging.debug("mark1")
         model, preprocess = clip.load("ViT-B/32", device=device)
+        logging.debug("mark2")
 
     if "image_features" not in globals():
         logging.info("Loading image features")
@@ -283,9 +285,13 @@ def show_images(n_clicks, index_store, current_children):
 )
 def search_callback(n_clicks, n_submit, text_input,
                     image_inputs, button_style):  # , model=model, device=device, image_features=image_features):
+    logging.debug("mark3")
+    logging.info(f"n_clicks {n_clicks}")
+
     if n_clicks is None:
         return [], button_style, None
 
+    logging.debug("mark4")
     load_data_if_required()
     # Increase time before data gets released again
     global memory_release_time
@@ -305,6 +311,8 @@ def search_callback(n_clicks, n_submit, text_input,
         image_queries = torch.zeros(0, 512)
 
     query_features = torch.cat((text_query, image_queries), dim=0)
+
+    logging.debug("mark5")
 
     if query_features.shape[0] == 0:
         return [], button_style, 1
