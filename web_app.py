@@ -91,7 +91,7 @@ def load_data_if_required():
         global model, preprocess, device
         device = "cpu"
         logging.debug("mark1")
-        model, preprocess = clip.load("ViT-B/32", device=device)
+        model, preprocess = clip.load("ViT-B/32", device=device, download_root="./clip")
         logging.debug("mark2")
 
     if "image_features" not in globals():
